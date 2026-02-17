@@ -1,0 +1,56 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - '*.bicep'
+      - '*.bicepparam'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  azureServiceConnection: 'Azure-ServiceConnection'
+  resourceGroupName: 'vostoklogger-rg'
+  location: 'westeurope'
+
+stages:
+  - stage: Validate
+    displayName: 'Validate Bicep'
+    jobs:
+      - job: ValidateBicep
+        displayName: 'Validate Bicep'
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Build and Validate'
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az bicep build --file main.bicep
+                az deployment group validate \
+                  --resource-group $(resourceGroupName) \
+                  --template-file main.bicep \
+                  --parameters main.bicepparam
+
+  - stage: Deploy
+    displayName: 'Deploy Infrastructure'
+    dependsOn: Validate
+    jobs:
+      - job: DeployInfra
+        displayName: 'Deploy'
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Deploy Bicep'
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az group create --name $(resourceGroupName) --location $(location)
+                az deployment group create \
+                  --resource-group $(resourceGroupName) \
+                  --template-file main.bicep \
+                  --parameters main.bicepparam

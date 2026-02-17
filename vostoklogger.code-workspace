@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../vostoklogger_mqtt_filter"
+		},
+		{
+			"path": "../vostoklogger_logger_func"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {}
+}
