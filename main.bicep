@@ -137,7 +137,7 @@ resource mqttFilterApp 'Microsoft.App/containerApps@2024-03-01' = {
       containers: [
         {
           name: 'mqtt-filter'
-          image: '${containerRegistry.properties.loginServer}/vostoklogger-mqtt-filter:latest'
+          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'  // Placeholder, будет обновлен pipeline
           resources: {
             cpu: json('0.25')     // Минимум CPU
             memory: '0.5Gi'       // Минимум памяти
