@@ -25,6 +25,32 @@ az deployment group create \
 
 Или через Azure Pipeline (автоматически при изменении Bicep файлов).
 
+## После деплоя: назначить роль для Managed Identity
+
+Container App использует Managed Identity для доступа к Event Hub. Нужно назначить роль **вручную**:
+
+```bash
+# Получить Principal ID Container App
+PRINCIPAL_ID=$(az containerapp show \
+  --name vostoklogger-mqtt \
+  --resource-group rsgweprivate-vostoklogger \
+  --query identity.principalId -o tsv)
+
+# Получить ID Event Hub Namespace
+EVENTHUB_ID=$(az eventhubs namespace show \
+  --name $(az eventhubs namespace list --resource-group rsgweprivate-vostoklogger --query "[0].name" -o tsv) \
+  --resource-group rsgweprivate-vostoklogger \
+  --query id -o tsv)
+
+# Назначить роль Azure Event Hubs Data Sender
+az role assignment create \
+  --assignee $PRINCIPAL_ID \
+  --role "Azure Event Hubs Data Sender" \
+  --scope $EVENTHUB_ID
+```
+
+Или через Portal: Event Hub Namespace → Access Control (IAM) → Add role assignment → Azure Event Hubs Data Sender → Select managed identity → vostoklogger-mqtt
+
 ## Добавление MQTT секретов (через Portal или CLI)
 
 Секреты `mqtt-username` и `mqtt-password` созданы пустыми. Обнови их значения:
@@ -38,7 +64,7 @@ az deployment group create \
 ```bash
 az containerapp secret set \
   --name vostoklogger-mqtt \
-  --resource-group vostoklogger-rg \
+  --resource-group rsgweprivate-vostoklogger \
   --secrets mqtt-username=youruser mqtt-password=yourpass
 ```
 

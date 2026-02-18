@@ -194,17 +194,6 @@ resource mqttFilterApp 'Microsoft.App/containerApps@2024-03-01' = {
   }
 }
 
-// Role Assignment: Event Hub Data Sender для MQTT Filter
-resource mqttFilterEventHubRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(eventHubNamespace.id, mqttFilterApp.id, 'Event Hubs Data Sender')
-  scope: eventHubNamespace
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2b629674-e913-4c01-ae53-ef4638d8f975')  // Azure Event Hubs Data Sender
-    principalId: mqttFilterApp.identity.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
 // Storage Account для Azure Function (требуется отдельный)
 resource functionStorageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: '${projectName}funcst${take(uniqueSuffix, 6)}'
