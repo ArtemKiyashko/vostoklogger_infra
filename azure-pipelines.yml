@@ -50,7 +50,25 @@ stages:
               scriptLocation: 'inlineScript'
               inlineScript: |
                 az group create --name $(resourceGroupName) --location $(location)
-                az deployment group create \
+                
+                # Получить текущий образ Container App если она существует
+                CURRENT_IMAGE=$(az containerapp show \
+                  --name vostoklogger-mqtt \
                   --resource-group $(resourceGroupName) \
-                  --template-file main.bicep \
-                  --parameters main.bicepparam
+                  --query 'properties.template.containers[0].image' \
+                  -o tsv 2>/dev/null || echo "")
+                
+                # Если Container App существует и образ не placeholder, использовать его
+                if [ ! -z "$CURRENT_IMAGE" ] && [[ "$CURRENT_IMAGE" != *"containerapps-helloworld"* ]]; then
+                  echo "Сохраняем текущий образ: $CURRENT_IMAGE"
+                  az deployment group create \
+                    --resource-group $(resourceGroupName) \
+                    --template-file main.bicep \
+                    --parameters main.bicepparam mqttFilterImage="$CURRENT_IMAGE"
+                else
+                  echo "Используем placeholder образ для первого деплоя"
+                  az deployment group create \
+                    --resource-group $(resourceGroupName) \
+                    --template-file main.bicep \
+                    --parameters main.bicepparam
+                fi

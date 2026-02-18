@@ -7,6 +7,9 @@ param location string = resourceGroup().location
 @description('Project name prefix for resource naming')
 param projectName string = 'vostoklogger'
 
+@description('MQTT Filter container image (leave as placeholder for first deployment)')
+param mqttFilterImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+
 // Variables - naming convention
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var eventHubNamespaceName = '${projectName}-eh-${uniqueSuffix}'
@@ -137,7 +140,7 @@ resource mqttFilterApp 'Microsoft.App/containerApps@2024-03-01' = {
       containers: [
         {
           name: 'mqtt-filter'
-          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'  // Placeholder, будет обновлен pipeline
+          image: mqttFilterImage
           resources: {
             cpu: json('0.25')     // Минимум CPU
             memory: '0.5Gi'       // Минимум памяти
