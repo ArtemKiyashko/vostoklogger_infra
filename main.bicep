@@ -10,6 +10,12 @@ param projectName string = 'vostoklogger'
 @description('MQTT Filter container image (leave as placeholder for first deployment)')
 param mqttFilterImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 
+@description('MQTT Broker address (e.g. mqtt.example.com:1883)')
+param mqttBroker string = ''
+
+@description('MQTT Topic to subscribe (default: #)')
+param mqttTopic string = '#'
+
 // Variables - naming convention
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var eventHubNamespaceName = '${projectName}-eh-${uniqueSuffix}'
@@ -112,6 +118,9 @@ resource containerAppsEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
 resource mqttFilterApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: mqttFilterAppName
   location: location
+  identity: {
+    type: 'SystemAssigned'  // Managed Identity для доступа к Azure ресурсам
+  }
   properties: {
     environmentId: containerAppsEnv.id
     workloadProfileName: 'Consumption'
@@ -120,12 +129,16 @@ resource mqttFilterApp 'Microsoft.App/containerApps@2024-03-01' = {
       ingress: null  // Внешний доступ не нужен
       secrets: [
         {
-          name: 'eventhub-connection'
-          value: listKeys('${eventHubNamespace.id}/authorizationRules/RootManageSharedAccessKey', eventHubNamespace.apiVersion).primaryConnectionString
-        }
-        {
           name: 'acr-password'
           value: containerRegistry.listCredentials().passwords[0].value
+        }
+        {
+          name: 'mqtt-username'
+          value: ''  // Обновишь через Portal/CLI
+        }
+        {
+          name: 'mqtt-password'
+          value: ''  // Обновишь через Portal/CLI
         }
       ]
       registries: [
@@ -147,12 +160,28 @@ resource mqttFilterApp 'Microsoft.App/containerApps@2024-03-01' = {
           }
           env: [
             {
-              name: 'EVENTHUB_CONNECTION'
-              secretRef: 'eventhub-connection'
+              name: 'EVENTHUB_NAMESPACE'
+              value: '${eventHubNamespaceName}.servicebus.windows.net'
             }
             {
               name: 'EVENTHUB_NAME'
               value: eventHubName
+            }
+            {
+              name: 'MQTT_BROKER'
+              value: mqttBroker
+            }
+            {
+              name: 'MQTT_TOPIC'
+              value: mqttTopic
+            }
+            {
+              name: 'MQTT_USERNAME'
+              secretRef: 'mqtt-username'  // Связка готова, обнови секрет
+            }
+            {
+              name: 'MQTT_PASSWORD'
+              secretRef: 'mqtt-password'  // Связка готова, обнови секрет
             }
           ]
         }
@@ -162,6 +191,17 @@ resource mqttFilterApp 'Microsoft.App/containerApps@2024-03-01' = {
         maxReplicas: 1
       }
     }
+  }
+}
+
+// Role Assignment: Event Hub Data Sender для MQTT Filter
+resource mqttFilterEventHubRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(eventHubNamespace.id, mqttFilterApp.id, 'Event Hubs Data Sender')
+  scope: eventHubNamespace
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2b629674-e913-4c01-ae53-ef4638d8f975')  // Azure Event Hubs Data Sender
+    principalId: mqttFilterApp.identity.principalId
+    principalType: 'ServicePrincipal'
   }
 }
 
