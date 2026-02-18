@@ -12,7 +12,7 @@ pool:
 
 variables:
   azureServiceConnection: 'Azure-ServiceConnection'
-  resourceGroupName: 'vostoklogger-rg'
+  resourceGroupName: 'rsgweprivate-vostoklogger'
   location: 'westeurope'
 
 stages:
