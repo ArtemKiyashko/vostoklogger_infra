@@ -132,14 +132,6 @@ resource mqttFilterApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'acr-password'
           value: containerRegistry.listCredentials().passwords[0].value
         }
-        {
-          name: 'mqtt-username'
-          value: ''  // Обновишь через Portal/CLI
-        }
-        {
-          name: 'mqtt-password'
-          value: ''  // Обновишь через Portal/CLI
-        }
       ]
       registries: [
         {
