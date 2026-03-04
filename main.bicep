@@ -25,6 +25,35 @@ var acrName = '${projectName}acr${take(uniqueSuffix, 6)}'
 var containerAppsEnvironmentName = '${projectName}-cae'
 var mqttFilterAppName = '${projectName}-mqtt'
 var loggerFuncAppName = '${projectName}-logger'
+var logAnalyticsWorkspaceName = '${projectName}-law-${uniqueSuffix}'
+var applicationInsightsName = '${projectName}-ai-${uniqueSuffix}'
+
+// Log Analytics Workspace - required for Application Insights
+resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+  name: logAnalyticsWorkspaceName
+  location: location
+  properties: {
+    sku: {
+      name: 'PerGB2018'  // Pay-as-you-go pricing
+    }
+    retentionInDays: 30  // Минимальный срок хранения для экономии
+    publicNetworkAccessForIngestion: 'Enabled'
+    publicNetworkAccessForQuery: 'Enabled'
+  }
+}
+
+// Application Insights
+resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: applicationInsightsName
+  location: location
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logAnalyticsWorkspace.id
+    publicNetworkAccessForIngestion: 'Enabled'
+    publicNetworkAccessForQuery: 'Enabled'
+  }
+}
 
 // Event Hub Namespace - BASIC tier (самый дешевый!)
 resource eventHubNamespace 'Microsoft.EventHub/namespaces@2024-01-01' = {
@@ -183,6 +212,10 @@ resource mqttFilterApp 'Microsoft.App/containerApps@2024-03-01' = {
               name: 'MQTT_PASSWORD'
               secretRef: 'mqtt-password'  // Связка готова, обнови секрет
             }
+            {
+              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+              value: applicationInsights.properties.ConnectionString
+            }
           ]
         }
       ]
@@ -267,6 +300,10 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
           name: 'STORAGE_CONTAINER'
           value: parquetContainer.name
         }
+        {
+          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+          value: applicationInsights.properties.ConnectionString
+        }
       ]
       netFrameworkVersion: 'v8.0'
     }
@@ -283,3 +320,6 @@ output containerAppsEnvironmentId string = containerAppsEnv.id
 output mqttFilterAppName string = mqttFilterApp.name
 output loggerFuncAppName string = loggerFuncApp.name
 output functionStorageAccountName string = functionStorageAccount.name
+output applicationInsightsName string = applicationInsights.name
+output applicationInsightsConnectionString string = applicationInsights.properties.ConnectionString
+output logAnalyticsWorkspaceName string = logAnalyticsWorkspace.name
