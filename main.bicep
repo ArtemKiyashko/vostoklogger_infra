@@ -16,6 +16,9 @@ param mqttBroker string = ''
 @description('MQTT Topic to subscribe (default: #)')
 param mqttTopic string = '#'
 
+@description('Comma-separated allowed Meshtastic from IDs (uint)')
+param filterAllowedFromIds string = ''
+
 @description('Event Hub Namespace name (must be globally unique)')
 param eventHubNamespaceName string = '${projectName}-eh-${uniqueString(resourceGroup().id)}'
 
@@ -207,6 +210,10 @@ resource mqttFilterApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'MQTT_TOPIC'
               value: mqttTopic
+            }
+            {
+              name: 'FILTER_ALLOWED_FROM_IDS'
+              value: filterAllowedFromIds
             }
             {
               name: 'MQTT_USERNAME'
