@@ -16,10 +16,14 @@ param mqttBroker string = ''
 @description('MQTT Topic to subscribe (default: #)')
 param mqttTopic string = '#'
 
+@description('Event Hub Namespace name (must be globally unique)')
+param eventHubNamespaceName string = '${projectName}-eh-${uniqueString(resourceGroup().id)}'
+
+@description('Event Hub name inside namespace')
+param eventHubName string = 'telemetry'
+
 // Variables - naming convention
 var uniqueSuffix = uniqueString(resourceGroup().id)
-var eventHubNamespaceName = '${projectName}-eh-${uniqueSuffix}'
-var eventHubName = 'telemetry'
 var dataLakeStorageName = '${projectName}dl${take(uniqueSuffix, 6)}'
 var acrName = '${projectName}acr${take(uniqueSuffix, 6)}'
 var containerAppsEnvironmentName = '${projectName}-cae'

@@ -10,5 +10,7 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"debug.internalConsoleOptions": "neverOpen"
+	}
 }
