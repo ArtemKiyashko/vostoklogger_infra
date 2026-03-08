@@ -18,11 +18,11 @@ param mqttTopic string = '#'
 
 @secure()
 @description('MQTT username (secure deployment parameter)')
-param mqttUsername string
+param mqttUsername string = ''
 
 @secure()
 @description('MQTT password (secure deployment parameter)')
-param mqttPassword string
+param mqttPassword string = ''
 
 @description('Comma-separated allowed Meshtastic from IDs (uint)')
 param filterAllowedFromIds string = ''
