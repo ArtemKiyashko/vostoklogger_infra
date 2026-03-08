@@ -28,6 +28,9 @@ param mqttPassword string = ''
 @description('Synapse SQL administrator password')
 param synapseSqlPassword string = ''
 
+@description('Object ID of the Azure AD user to be Synapse Workspace Administrator')
+param synapseAdminObjectId string = ''
+
 @description('Comma-separated allowed Meshtastic from IDs (uint)')
 param filterAllowedFromIds string = ''
 
@@ -354,6 +357,9 @@ resource synapseWorkspace 'Microsoft.Synapse/workspaces@2021-06-01' = {
     }
     sqlAdministratorLogin: 'sqladmin'
     sqlAdministratorLoginPassword: synapseSqlPassword
+    cspWorkspaceAdminProperties: {
+      initialWorkspaceAdminObjectId: synapseAdminObjectId
+    }
   }
 }
 
@@ -364,6 +370,16 @@ resource synapseFirewallAllowAzure 'Microsoft.Synapse/workspaces/firewallRules@2
   properties: {
     startIpAddress: '0.0.0.0'
     endIpAddress: '0.0.0.0'
+  }
+}
+
+// Allow all IPs to access Synapse (personal project)
+resource synapseFirewallAllowAll 'Microsoft.Synapse/workspaces/firewallRules@2021-06-01' = {
+  parent: synapseWorkspace
+  name: 'AllowAll'
+  properties: {
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '255.255.255.255'
   }
 }
 
