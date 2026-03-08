@@ -24,6 +24,10 @@ param mqttUsername string = ''
 @description('MQTT password (secure deployment parameter)')
 param mqttPassword string = ''
 
+@secure()
+@description('Synapse SQL administrator password')
+param synapseSqlPassword string = ''
+
 @description('Comma-separated allowed Meshtastic from IDs (uint)')
 param filterAllowedFromIds string = ''
 
@@ -307,6 +311,10 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
           value: 'dotnet-isolated'
         }
         {
+          name: 'WEBSITE_RUN_FROM_PACKAGE'
+          value: '1'
+        }
+        {
           name: 'EVENTHUB_CONNECTION__fullyQualifiedNamespace'
           value: '${eventHubNamespaceName}.servicebus.windows.net'
         }
@@ -332,6 +340,33 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
   }
 }
 
+// Synapse Workspace - Serverless SQL for Parquet analytics
+resource synapseWorkspace 'Microsoft.Synapse/workspaces@2021-06-01' = {
+  name: '${projectName}-synapse-${uniqueSuffix}'
+  location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    defaultDataLakeStorage: {
+      accountUrl: 'https://${dataLakeStorage.name}.dfs.core.windows.net'
+      filesystem: parquetContainer.name
+    }
+    sqlAdministratorLogin: 'sqladmin'
+    sqlAdministratorLoginPassword: synapseSqlPassword
+  }
+}
+
+// Allow Azure services to access Synapse
+resource synapseFirewallAllowAzure 'Microsoft.Synapse/workspaces/firewallRules@2021-06-01' = {
+  parent: synapseWorkspace
+  name: 'AllowAllWindowsAzureIps'
+  properties: {
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '0.0.0.0'
+  }
+}
+
 // Outputs
 output eventHubNamespaceName string = eventHubNamespace.name
 output eventHubName string = eventHub.name
@@ -345,3 +380,5 @@ output functionStorageAccountName string = functionStorageAccount.name
 output applicationInsightsName string = applicationInsights.name
 output applicationInsightsConnectionString string = applicationInsights.properties.ConnectionString
 output logAnalyticsWorkspaceName string = logAnalyticsWorkspace.name
+output synapseWorkspaceName string = synapseWorkspace.name
+output synapseSqlEndpoint string = synapseWorkspace.properties.connectivityEndpoints.sql

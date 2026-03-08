@@ -34,8 +34,8 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                if [ -z "$(mqttUsername)" ] || [ -z "$(mqttPassword)" ]; then
-                  echo "ERROR: mqttUsername/mqttPassword are not set in variable group 'vostoklogger-secrets'"
+                if [ -z "$(mqttUsername)" ] || [ -z "$(mqttPassword)" ] || [ -z "$(synapseSqlPassword)" ]; then
+                  echo "ERROR: mqttUsername/mqttPassword/synapseSqlPassword are not set in variable group 'vostoklogger-secrets'"
                   exit 1
                 fi
 
@@ -44,7 +44,7 @@ stages:
                   --resource-group $(resourceGroupName) \
                   --template-file main.bicep \
                   --parameters main.bicepparam \
-                  --parameters mqttUsername="$(mqttUsername)" mqttPassword="$(mqttPassword)"
+                  --parameters mqttUsername="$(mqttUsername)" mqttPassword="$(mqttPassword)" synapseSqlPassword="$(synapseSqlPassword)"
 
   - stage: Deploy
     displayName: 'Deploy Infrastructure'
@@ -60,8 +60,8 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                if [ -z "$(mqttUsername)" ] || [ -z "$(mqttPassword)" ]; then
-                  echo "ERROR: mqttUsername/mqttPassword are not set in variable group 'vostoklogger-secrets'"
+                if [ -z "$(mqttUsername)" ] || [ -z "$(mqttPassword)" ] || [ -z "$(synapseSqlPassword)" ]; then
+                  echo "ERROR: mqttUsername/mqttPassword/synapseSqlPassword are not set in variable group 'vostoklogger-secrets'"
                   exit 1
                 fi
 
@@ -81,12 +81,12 @@ stages:
                     --resource-group $(resourceGroupName) \
                     --template-file main.bicep \
                     --parameters main.bicepparam mqttFilterImage="$CURRENT_IMAGE" \
-                    --parameters mqttUsername="$(mqttUsername)" mqttPassword="$(mqttPassword)"
+                    --parameters mqttUsername="$(mqttUsername)" mqttPassword="$(mqttPassword)" synapseSqlPassword="$(synapseSqlPassword)"
                 else
                   echo "Используем placeholder образ для первого деплоя"
                   az deployment group create \
                     --resource-group $(resourceGroupName) \
                     --template-file main.bicep \
                     --parameters main.bicepparam \
-                    --parameters mqttUsername="$(mqttUsername)" mqttPassword="$(mqttPassword)"
+                    --parameters mqttUsername="$(mqttUsername)" mqttPassword="$(mqttPassword)" synapseSqlPassword="$(synapseSqlPassword)"
                 fi
