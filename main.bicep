@@ -278,6 +278,9 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
   name: loggerFuncAppName
   location: location
   kind: 'functionapp'
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     serverFarmId: functionAppPlan.id
     httpsOnly: true
@@ -304,16 +307,16 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
           value: 'dotnet-isolated'
         }
         {
-          name: 'EVENTHUB_CONNECTION'
-          value: listKeys('${eventHubNamespace.id}/authorizationRules/RootManageSharedAccessKey', eventHubNamespace.apiVersion).primaryConnectionString
+          name: 'EVENTHUB_CONNECTION__fullyQualifiedNamespace'
+          value: '${eventHubNamespaceName}.servicebus.windows.net'
         }
         {
           name: 'EVENTHUB_NAME'
           value: eventHubName
         }
         {
-          name: 'STORAGE_CONNECTION'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${dataLakeStorage.name};AccountKey=${dataLakeStorage.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
+          name: 'STORAGE_ACCOUNT_NAME'
+          value: dataLakeStorage.name
         }
         {
           name: 'STORAGE_CONTAINER'
