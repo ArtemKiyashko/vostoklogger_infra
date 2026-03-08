@@ -12,5 +12,9 @@
 	],
 	"settings": {
 		"debug.internalConsoleOptions": "neverOpen"
+	},
+	"launch": {
+		"configurations": [],
+		"compounds": []
 	}
 }
