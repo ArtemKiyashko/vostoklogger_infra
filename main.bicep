@@ -16,6 +16,14 @@ param mqttBroker string = ''
 @description('MQTT Topic to subscribe (default: #)')
 param mqttTopic string = '#'
 
+@secure()
+@description('MQTT username (secure deployment parameter)')
+param mqttUsername string
+
+@secure()
+@description('MQTT password (secure deployment parameter)')
+param mqttPassword string
+
 @description('Comma-separated allowed Meshtastic from IDs (uint)')
 param filterAllowedFromIds string = ''
 
@@ -170,11 +178,11 @@ resource mqttFilterApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
         {
           name: 'mqtt-username'
-          value: 'changeme'
+          value: mqttUsername
         }
         {
           name: 'mqtt-password'
-          value: 'changeme'
+          value: mqttPassword
         }
       ]
       registries: [

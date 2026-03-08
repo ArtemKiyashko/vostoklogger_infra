@@ -11,9 +11,14 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  azureServiceConnection: 'Azure-ServiceConnection'
-  resourceGroupName: 'rsgweprivate-vostoklogger'
-  location: 'westeurope'
+  - group: 'vostoklogger-secrets'
+
+  - name: azureServiceConnection
+    value: 'Azure-ServiceConnection'
+  - name: resourceGroupName
+    value: 'rsgweprivate-vostoklogger'
+  - name: location
+    value: 'westeurope'
 
 stages:
   - stage: Validate
@@ -29,11 +34,17 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
+                if [ -z "$(mqttUsername)" ] || [ -z "$(mqttPassword)" ]; then
+                  echo "ERROR: mqttUsername/mqttPassword are not set in variable group 'vostoklogger-secrets'"
+                  exit 1
+                fi
+
                 az bicep build --file main.bicep
                 az deployment group validate \
                   --resource-group $(resourceGroupName) \
                   --template-file main.bicep \
-                  --parameters main.bicepparam
+                  --parameters main.bicepparam \
+                  --parameters mqttUsername="$(mqttUsername)" mqttPassword="$(mqttPassword)"
 
   - stage: Deploy
     displayName: 'Deploy Infrastructure'
@@ -49,6 +60,11 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
+                if [ -z "$(mqttUsername)" ] || [ -z "$(mqttPassword)" ]; then
+                  echo "ERROR: mqttUsername/mqttPassword are not set in variable group 'vostoklogger-secrets'"
+                  exit 1
+                fi
+
                 az group create --name $(resourceGroupName) --location $(location)
                 
                 # Получить текущий образ Container App если она существует
@@ -64,11 +80,13 @@ stages:
                   az deployment group create \
                     --resource-group $(resourceGroupName) \
                     --template-file main.bicep \
-                    --parameters main.bicepparam mqttFilterImage="$CURRENT_IMAGE"
+                    --parameters main.bicepparam mqttFilterImage="$CURRENT_IMAGE" \
+                    --parameters mqttUsername="$(mqttUsername)" mqttPassword="$(mqttPassword)"
                 else
                   echo "Используем placeholder образ для первого деплоя"
                   az deployment group create \
                     --resource-group $(resourceGroupName) \
                     --template-file main.bicep \
-                    --parameters main.bicepparam
+                    --parameters main.bicepparam \
+                    --parameters mqttUsername="$(mqttUsername)" mqttPassword="$(mqttPassword)"
                 fi
