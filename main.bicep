@@ -51,7 +51,7 @@ var logAnalyticsWorkspaceName = '${projectName}-law-${uniqueSuffix}'
 var applicationInsightsName = '${projectName}-ai-${uniqueSuffix}'
 var signalRName = '${projectName}-signalr-${uniqueSuffix}'
 var webmapStorageName = '${projectName}web${take(uniqueSuffix, 6)}'
-var webmapStaticWebsiteHost = '${webmapStorageName}.z6.web.${environment().suffixes.storage}'
+var webmapStaticWebsiteOrigin = '${webmapStorageName}.z6.web.${environment().suffixes.storage}'
 
 // Log Analytics Workspace - required for Application Insights
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -348,10 +348,10 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
       netFrameworkVersion: 'v8.0'
       cors: {
         allowedOrigins: [
-          'https://${webmapStaticWebsiteHost}'
+          'https://${webmapStaticWebsiteOrigin}'
           'http://localhost:3000'
         ]
-        supportCredentials: false
+        supportCredentials: true
       }
     }
   }
@@ -380,7 +380,7 @@ resource signalR 'Microsoft.SignalRService/signalR@2024-03-01' = {
     ]
     cors: {
       allowedOrigins: [
-        'https://${webmapStaticWebsiteHost}'  // Static website origin
+        'https://${webmapStaticWebsiteOrigin}'  // Static website origin
         'http://localhost:3000'  // Local development
       ]
     }
@@ -490,4 +490,4 @@ output synapseWorkspaceName string = synapseWorkspace.name
 output synapseSqlEndpoint string = synapseWorkspace.properties.connectivityEndpoints.sql
 output signalRName string = signalR.name
 output webmapStorageName string = webmapStorage.name
-output webmapStaticWebsiteUrl string = 'https://${webmapStaticWebsiteHost}'
+output webmapStaticWebsiteUrl string = 'https://${webmapStaticWebsiteOrigin}'
