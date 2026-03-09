@@ -351,7 +351,7 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
           'https://${webmapStaticWebsiteOrigin}'
           'http://localhost:3000'
         ]
-        supportCredentials: true
+        supportCredentials: false
       }
     }
   }
