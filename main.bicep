@@ -49,6 +49,9 @@ var mqttFilterAppName = '${projectName}-mqtt'
 var loggerFuncAppName = '${projectName}-logger'
 var logAnalyticsWorkspaceName = '${projectName}-law-${uniqueSuffix}'
 var applicationInsightsName = '${projectName}-ai-${uniqueSuffix}'
+var signalRName = '${projectName}-signalr-${uniqueSuffix}'
+var webmapStorageName = '${projectName}web${take(uniqueSuffix, 6)}'
+var webmapStaticWebsiteHost = '${webmapStorageName}.z6.web.${environment().suffixes.storage}'
 
 // Log Analytics Workspace - required for Application Insights
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -295,11 +298,11 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
       appSettings: [
         {
           name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${functionStorageAccount.name};AccountKey=${functionStorageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${functionStorageAccount.name};AccountKey=${functionStorageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
         }
         {
           name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${functionStorageAccount.name};AccountKey=${functionStorageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${functionStorageAccount.name};AccountKey=${functionStorageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
         }
         {
           name: 'WEBSITE_CONTENTSHARE'
@@ -333,10 +336,91 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
           value: applicationInsights.properties.ConnectionString
         }
+        {
+          name: 'AzureSignalRConnectionString'
+          value: signalR.listKeys().primaryConnectionString
+        }
+        {
+          name: 'POSITIONS_TABLE_CONNECTION'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${functionStorageAccount.name};AccountKey=${functionStorageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
+        }
       ]
       netFrameworkVersion: 'v8.0'
+      cors: {
+        allowedOrigins: [
+          'https://${webmapStaticWebsiteHost}'
+          'http://localhost:3000'
+        ]
+        supportCredentials: false
+      }
     }
   }
+}
+
+// Azure SignalR Service - Free tier for realtime map updates
+resource signalR 'Microsoft.SignalRService/signalR@2024-03-01' = {
+  name: signalRName
+  location: location
+  sku: {
+    name: 'Free_F1'
+    tier: 'Free'
+    capacity: 1
+  }
+  kind: 'SignalR'
+  properties: {
+    features: [
+      {
+        flag: 'ServiceMode'
+        value: 'Serverless'  // Serverless mode for Azure Functions integration
+      }
+      {
+        flag: 'EnableConnectivityLogs'
+        value: 'true'
+      }
+    ]
+    cors: {
+      allowedOrigins: [
+        'https://${webmapStaticWebsiteHost}'  // Static website origin
+        'http://localhost:3000'  // Local development
+      ]
+    }
+    serverless: {
+      connectionTimeoutInSeconds: 30
+    }
+  }
+}
+
+// Storage Account for static website (webmap)
+resource webmapStorage 'Microsoft.Storage/storageAccounts@2023-01-01' = {
+  name: webmapStorageName
+  location: location
+  kind: 'StorageV2'
+  sku: {
+    name: 'Standard_LRS'
+  }
+  properties: {
+    minimumTlsVersion: 'TLS1_2'
+    allowBlobPublicAccess: true  // Required for static website
+    supportsHttpsTrafficOnly: true
+  }
+}
+
+// Enable static website on webmap storage
+resource webmapBlobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
+  parent: webmapStorage
+  name: 'default'
+}
+
+// Table service on function storage for hot position data (day history)
+resource functionTableService 'Microsoft.Storage/storageAccounts/tableServices@2023-01-01' = {
+  parent: functionStorageAccount
+  name: 'default'
+}
+
+// Table for position records
+resource positionsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
+  parent: functionTableService
+  name: 'positions'
 }
 
 // Synapse Workspace - Serverless SQL for Parquet analytics
@@ -348,7 +432,7 @@ resource synapseWorkspace 'Microsoft.Synapse/workspaces@2021-06-01' = {
   }
   properties: {
     defaultDataLakeStorage: {
-      accountUrl: 'https://${dataLakeStorage.name}.dfs.core.windows.net'
+      accountUrl: 'https://${dataLakeStorage.name}.dfs.${environment().suffixes.storage}'
       filesystem: parquetContainer.name
     }
     sqlAdministratorLogin: 'sqladmin'
@@ -394,3 +478,6 @@ output applicationInsightsConnectionString string = applicationInsights.properti
 output logAnalyticsWorkspaceName string = logAnalyticsWorkspace.name
 output synapseWorkspaceName string = synapseWorkspace.name
 output synapseSqlEndpoint string = synapseWorkspace.properties.connectivityEndpoints.sql
+output signalRName string = signalR.name
+output webmapStorageName string = webmapStorage.name
+output webmapStaticWebsiteUrl string = 'https://${webmapStaticWebsiteHost}'
