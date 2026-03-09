@@ -314,10 +314,6 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
           value: 'dotnet-isolated'
         }
         {
-          name: 'WEBSITE_RUN_FROM_PACKAGE'
-          value: '1'
-        }
-        {
           name: 'EVENTHUB_CONNECTION__fullyQualifiedNamespace'
           value: '${eventHubNamespaceName}.servicebus.windows.net'
         }
