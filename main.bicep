@@ -411,6 +411,16 @@ resource webmapBlobService 'Microsoft.Storage/storageAccounts/blobServices@2023-
   name: 'default'
 }
 
+// $web container is created automatically when static website is enabled,
+// but declaring it ensures Bicep tracks it as part of infrastructure.
+resource webmapWebContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  parent: webmapBlobService
+  name: '$web'
+  properties: {
+    publicAccess: 'None' // Static website serves via its own endpoint, not blob public access
+  }
+}
+
 // Table service on function storage for hot position data (day history)
 resource functionTableService 'Microsoft.Storage/storageAccounts/tableServices@2023-01-01' = {
   parent: functionStorageAccount
