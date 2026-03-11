@@ -28,9 +28,6 @@ param mqttPassword string = ''
 @description('Synapse SQL administrator password')
 param synapseSqlPassword string = ''
 
-@description('Object ID of the Azure AD user to be Synapse Workspace Administrator')
-param synapseAdminObjectId string = ''
-
 @description('Comma-separated allowed Meshtastic from IDs (uint)')
 param filterAllowedFromIds string = ''
 
@@ -435,7 +432,7 @@ resource positionsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@
 
 // Synapse Workspace - Serverless SQL for Parquet analytics
 resource synapseWorkspace 'Microsoft.Synapse/workspaces@2021-06-01' = {
-  name: '${projectName}-syn-${uniqueSuffix}'
+  name: '${projectName}-synapse-${uniqueSuffix}'
   location: location
   identity: {
     type: 'SystemAssigned'
@@ -447,9 +444,6 @@ resource synapseWorkspace 'Microsoft.Synapse/workspaces@2021-06-01' = {
     }
     sqlAdministratorLogin: 'sqladmin'
     sqlAdministratorLoginPassword: synapseSqlPassword
-    cspWorkspaceAdminProperties: {
-      initialWorkspaceAdminObjectId: synapseAdminObjectId
-    }
   }
 }
 
