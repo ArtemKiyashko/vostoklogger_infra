@@ -1,4 +1,4 @@
-// Main infrastructure template for VostokLogger telemetry system
+// Main infrastructure template for VostokLogger messaging system
 targetScope = 'resourceGroup'
 
 @description('Location for all resources')
@@ -38,7 +38,7 @@ param filterAllowedFromIds string = ''
 param eventHubNamespaceName string = '${projectName}-eh-${uniqueString(resourceGroup().id)}'
 
 @description('Event Hub name inside namespace')
-param eventHubName string = 'telemetry'
+param eventHubName string = 'messages'
 
 // Variables - naming convention
 var uniqueSuffix = uniqueString(resourceGroup().id)
@@ -146,9 +146,9 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-pr
 }
 
 // Container для parquet файлов
-resource parquetContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+resource messagesContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
   parent: blobService
-  name: 'telemetry'
+  name: 'messages'
   properties: {
     publicAccess: 'None'
   }
@@ -330,7 +330,7 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
         }
         {
           name: 'STORAGE_CONTAINER'
-          value: parquetContainer.name
+          value: messagesContainer.name
         }
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
@@ -443,7 +443,7 @@ resource synapseWorkspace 'Microsoft.Synapse/workspaces@2021-06-01' = {
   properties: {
     defaultDataLakeStorage: {
       accountUrl: 'https://${dataLakeStorage.name}.dfs.${environment().suffixes.storage}'
-      filesystem: parquetContainer.name
+      filesystem: messagesContainer.name
     }
     sqlAdministratorLogin: 'sqladmin'
     sqlAdministratorLoginPassword: synapseSqlPassword
