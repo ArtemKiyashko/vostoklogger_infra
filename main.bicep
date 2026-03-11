@@ -435,7 +435,7 @@ resource positionsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@
 
 // Synapse Workspace - Serverless SQL for Parquet analytics
 resource synapseWorkspace 'Microsoft.Synapse/workspaces@2021-06-01' = {
-  name: '${projectName}-synapse-${uniqueSuffix}'
+  name: '${projectName}-syn-${uniqueSuffix}'
   location: location
   identity: {
     type: 'SystemAssigned'
