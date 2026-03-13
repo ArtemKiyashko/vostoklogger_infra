@@ -129,6 +129,36 @@ resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01'
   name: 'default'
 }
 
+// Lifecycle policy: перемещение блобов в Cold tier через 1 день для экономии на хранении
+resource lifecyclePolicy 'Microsoft.Storage/storageAccounts/managementPolicies@2023-01-01' = {
+  parent: dataLakeStorage
+  name: 'default'
+  properties: {
+    policy: {
+      rules: [
+        {
+          name: 'MoveToCold'
+          enabled: true
+          type: 'Lifecycle'
+          definition: {
+            filters: {
+              blobTypes: ['blockBlob']
+              prefixMatch: ['messages/']
+            }
+            actions: {
+              baseBlob: {
+                tierToCold: {
+                  daysAfterModificationGreaterThan: 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
 // Azure Container Registry - Basic tier (самый дешевый ~$5/мес)
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
   name: acrName

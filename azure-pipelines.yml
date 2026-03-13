@@ -91,11 +91,11 @@ stages:
                     --parameters mqttUsername="$(mqttUsername)" mqttPassword="$(mqttPassword)" synapseSqlPassword="$(synapseSqlPassword)"
                 fi
 
-                # Перезапуск MQTT filter после редеплоя инфры
+                # Перезапуск MQTT filter после редеплоя инфры (берём последнюю активную ревизию)
                 ACTIVE_REVISION=$(az containerapp revision list \
                   --name vostoklogger-mqtt \
                   --resource-group $(resourceGroupName) \
-                  --query "[?properties.active].name" -o tsv 2>/dev/null || echo "")
+                  --query "[?properties.active].name | [-1:]" -o tsv 2>/dev/null || echo "")
                 if [ ! -z "$ACTIVE_REVISION" ]; then
                   echo "Перезапуск ревизии: $ACTIVE_REVISION"
                   az containerapp revision restart \
