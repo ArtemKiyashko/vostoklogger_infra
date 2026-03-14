@@ -337,10 +337,6 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
           name: 'AzureSignalRConnectionString'
           value: signalR.listKeys().primaryConnectionString
         }
-        {
-          name: 'POSITIONS_TABLE_CONNECTION'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${functionStorageAccount.name};AccountKey=${functionStorageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
-        }
       ]
       netFrameworkVersion: 'v8.0'
       cors: {
@@ -418,17 +414,6 @@ resource webmapWebContainer 'Microsoft.Storage/storageAccounts/blobServices/cont
   }
 }
 
-// Table service on function storage for hot position data (day history)
-resource functionTableService 'Microsoft.Storage/storageAccounts/tableServices@2023-01-01' = {
-  parent: functionStorageAccount
-  name: 'default'
-}
-
-// Table for position records
-resource positionsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
-  parent: functionTableService
-  name: 'positions'
-}
 
 // Synapse Workspace - Serverless SQL for Parquet analytics
 resource synapseWorkspace 'Microsoft.Synapse/workspaces@2021-06-01' = {
