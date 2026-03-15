@@ -37,6 +37,12 @@ param eventHubNamespaceName string = '${projectName}-eh-${uniqueString(resourceG
 @description('Event Hub name inside namespace')
 param eventHubName string = 'messages'
 
+@description('Max buffer size before flushing Parquet file')
+param flushMaxBufferSize int = 5000
+
+@description('Flush interval in seconds')
+param flushIntervalSeconds int = 1800
+
 // Variables - naming convention
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var dataLakeStorageName = '${projectName}dl${take(uniqueSuffix, 6)}'
@@ -328,6 +334,14 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
         {
           name: 'STORAGE_CONTAINER'
           value: messagesContainer.name
+        }
+        {
+          name: 'FLUSH_MAX_BUFFER_SIZE'
+          value: string(flushMaxBufferSize)
+        }
+        {
+          name: 'FLUSH_INTERVAL_SECONDS'
+          value: string(flushIntervalSeconds)
         }
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
