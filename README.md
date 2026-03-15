@@ -1,124 +1,110 @@
 # vostoklogger_infra
 
-Bicep-шаблоны инфраструктуры Azure для системы логирования телеметрии.
+Bicep-шаблоны инфраструктуры Azure для системы логирования Meshtastic mesh-сети.
+
+## Архитектура
+
+```mermaid
+sequenceDiagram
+    participant MQTT as MQTT Broker<br/>(mqtt.onemesh.ru)
+    participant Filter as MQTT Filter<br/>(Container App)
+    participant EH as Event Hub<br/>(Basic)
+    participant Func as Logger Function<br/>(Consumption)
+    participant DL as Data Lake<br/>(Parquet)
+    participant SR as SignalR<br/>(Serverless)
+    participant Web as Web Map<br/>(Static Website)
+    participant Synapse as Synapse<br/>(Serverless SQL)
+
+    MQTT->>Filter: MQTT messages (protobuf/JSON)
+    Filter->>Filter: Фильтрация по node ID
+    Filter->>EH: Envelope JSON {format, payload, timestamp}
+
+    EH->>Func: Event Hub trigger (batch)
+    Func->>Func: Parse → MessageRecord
+    Func->>DL: Parquet файлы (буферизация)
+    Func->>SR: Позиции (realtime push)
+
+    Web->>SR: SignalR подключение
+    SR-->>Web: Обновления позиций
+
+    Synapse->>DL: SQL-запросы к Parquet
+```
 
 ## Ресурсы
 
-- **Event Hub (Basic)** - прием сообщений от MQTT-фильтра
-- **Data Lake Storage (Standard_LRS)** - хранение Parquet файлов
-- **Azure Container Registry (Basic)** - Docker образы для MQTT filter
-- **Container Apps (Consumption)** - хостинг MQTT filter
-- **Azure Function (Consumption Y1)** - обработка Event Hub и запись в Parquet
-- **Application Insights + Log Analytics** - мониторинг и телеметрия обоих приложений
+| Ресурс | Тип/SKU | Назначение |
+|---|---|---|
+| **Event Hub** | Basic, 1 partition | Транспорт сообщений между Filter и Function |
+| **Data Lake Storage** | Standard_LRS, HNS | Хранение Parquet файлов |
+| **Container Registry** | Basic | Docker-образы MQTT Filter |
+| **Container Apps** | Consumption | Хостинг MQTT Filter |
+| **Azure Function** | Consumption (Y1) | Обработка Event Hub → Parquet/Table/SignalR |
+| **SignalR** | Free | Realtime push позиций на карту |
+| **Static Website** | Storage $web | Web Map (Leaflet.js) |
+| **Synapse** | Serverless SQL | Аналитические запросы к Parquet |
+| **App Insights + LAW** | PerGB2018, 30d | Мониторинг и логирование |
 
-**Примерная стоимость:** ~$18-25/месяц (зависит от объема данных и логов)
+## Параметры
+
+Настраиваются в [main.bicepparam](main.bicepparam):
+
+| Параметр | Описание | По умолчанию |
+|---|---|---|
+| `location` | Регион Azure | `westeurope` |
+| `projectName` | Префикс имён ресурсов | `vostoklogger` |
+| `mqttBroker` | Адрес MQTT брокера | — |
+| `mqttTopic` | Топик подписки | `#` |
+| `mqttUsername` | MQTT логин (secure) | — |
+| `mqttPassword` | MQTT пароль (secure) | — |
+| `filterAllowedFromIds` | Разрешённые node ID через запятую, или `*` для всех | — |
+| `eventHubName` | Имя Event Hub | `messages` |
+| `flushMaxBufferSize` | Макс. размер буфера перед записью Parquet | `5000` |
+| `flushIntervalSeconds` | Интервал сброса буфера (секунды) | `1800` |
+| `synapseSqlPassword` | Пароль SQL-админа Synapse (secure) | — |
 
 ## Деплой
 
+### Через Azure Pipeline
+
+Автоматически при изменении `*.bicep` / `*.bicepparam` файлов в `main`. Секреты (`mqttUsername`, `mqttPassword`, `synapseSqlPassword`) хранятся в variable group `vostoklogger-secrets`.
+
+### Вручную
+
 ```bash
 az login
-az group create --name vostoklogger-rg --location westeurope
-
-# Ввести MQTT креды безопасно (не в history)
-read -s MQTT_USERNAME
-read -s MQTT_PASSWORD
 
 az deployment group create \
-  --resource-group vostoklogger-rg \
+  --resource-group rsgweprivate-vostoklogger \
   --template-file main.bicep \
   --parameters main.bicepparam \
-  --parameters mqttUsername="$MQTT_USERNAME" mqttPassword="$MQTT_PASSWORD"
+  --parameters mqttUsername="<username>" mqttPassword="<password>" synapseSqlPassword="<password>"
 ```
 
-Или через Azure Pipeline (автоматически при изменении Bicep файлов).
+## После деплоя: Managed Identity
 
-## После деплоя: назначить роль для Managed Identity
-
-Container App использует Managed Identity для доступа к Event Hub. Нужно назначить роль **вручную**:
+Container App и Function App используют Managed Identity. Необходимо назначить роли:
 
 ```bash
-# Получить Principal ID Container App
+# Event Hub Data Sender для MQTT Filter
 PRINCIPAL_ID=$(az containerapp show \
   --name vostoklogger-mqtt \
   --resource-group rsgweprivate-vostoklogger \
   --query identity.principalId -o tsv)
 
-# Получить ID Event Hub Namespace
 EVENTHUB_ID=$(az eventhubs namespace show \
-  --name $(az eventhubs namespace list --resource-group rsgweprivate-vostoklogger --query "[0].name" -o tsv) \
+  --name $(az eventhubs namespace list -g rsgweprivate-vostoklogger --query "[0].name" -o tsv) \
   --resource-group rsgweprivate-vostoklogger \
   --query id -o tsv)
 
-# Назначить роль Azure Event Hubs Data Sender
 az role assignment create \
   --assignee $PRINCIPAL_ID \
   --role "Azure Event Hubs Data Sender" \
   --scope $EVENTHUB_ID
 ```
 
-Или через Portal: Event Hub Namespace → Access Control (IAM) → Add role assignment → Azure Event Hubs Data Sender → Select managed identity → vostoklogger-mqtt
-
 ## MQTT секреты
 
-Секреты `mqtt-username` и `mqtt-password` теперь задаются как `@secure()` параметры Bicep при деплое.
+Секреты задаются как `@secure()` параметры Bicep и передаются при деплое (через CI/CD variable group или CLI).
 
-Важно:
-- Изменения в Portal/CLI напрямую в Container App будут перезаписаны следующим деплоем.
-- Источник истины: значения, переданные в `az deployment group create` (или через секреты CI/CD).
-- Не храните эти значения в `main.bicepparam` и репозитории.
-
-## Параметры
-
-Настраиваются в [main.bicepparam](main.bicepparam):
-- `location` — регион Azure
-- `projectName` — префикс ресурсов
-- `mqttBroker` — адрес MQTT брокера (по умолчанию: `mqtt.meshtastic.org`)
-- `mqttTopic` — топик для подписки (по умолчанию: `msh/RU/#`)
-- `mqttUsername` — MQTT username (secure parameter, передается при деплое)
-- `mqttPassword` — MQTT password (secure parameter, передается при деплое)
-- `filterAllowedFromIds` — список разрешенных `from` через запятую (uint). Временный placeholder: `4294967295`
-- `eventHubNamespaceName` — имя Event Hub Namespace (опционально; по умолчанию генерируется автоматически и глобально уникально)
-- `eventHubName` — имя Event Hub (по умолчанию: `telemetry`)
-
-## Мониторинг и телеметрия
-
-Все приложения (MQTT Filter и Logger Function) интегрированы с **Application Insights** для сквозного мониторинга.
-
-### Доступ к логам
-
-**Azure Portal:**
-1. Перейдите в Application Insights ресурс
-2. Выберите **Logs** в меню слева
-3. Выполните запросы, например:
-
-```kusto
-// Все логи MQTT Filter за последний час
-traces
-| where cloud_RoleName == "vostoklogger-mqtt"
-| where timestamp > ago(1h)
-| order by timestamp desc
-
-// Ошибки в любом из приложений
-exceptions
-| where timestamp > ago(1h)
-| project timestamp, cloud_RoleName, message, outerMessage
-
-// Метрики производительности
-requests
-| summarize count(), avg(duration) by bin(timestamp, 5m), cloud_RoleName
-| render timechart
-```
-
-### Настроенные компоненты
-
-- **Log Analytics Workspace** - хранилище логов (30 дней retention)
-- **Application Insights** - мониторинг, трассировка, метрики
-- Автоматическая интеграция: `APPLICATIONINSIGHTS_CONNECTION_STRING` передается в оба приложения
-
-### Просмотр телеметрии
-
-- **Live Metrics**: реальное время мониторинг
-- **Failures**: автоматическое отслеживание исключений
-- **Performance**: анализ производительности
-- **Application Map**: визуализация зависимостей между компонентами
+> Не храните секреты в `main.bicepparam` или репозитории. Изменения через Portal будут перезаписаны следующим деплоем.
 
