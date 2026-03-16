@@ -65,6 +65,9 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09
       name: 'PerGB2018'  // Pay-as-you-go pricing
     }
     retentionInDays: 30  // Минимальный срок хранения для экономии
+    workspaceCapping: {
+      dailyQuotaGb: 2  // Daily cap для контроля расходов
+    }
     publicNetworkAccessForIngestion: 'Enabled'
     publicNetworkAccessForQuery: 'Enabled'
   }
