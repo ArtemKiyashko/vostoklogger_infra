@@ -492,7 +492,7 @@ resource exceptionsAlert 'Microsoft.Insights/scheduledQueryRules@2023-03-15-prev
     enabled: true
     evaluationFrequency: 'PT5M'
     scopes: [
-      applicationInsights.id
+      logAnalyticsWorkspace.id
     ]
     windowSize: 'PT15M'
     criteria: {
