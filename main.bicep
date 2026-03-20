@@ -482,38 +482,35 @@ resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' existing = {
 }
 
 // Alert: Sustained exceptions (>10 in 15 min window, evaluated every 5 min)
-resource exceptionsAlert 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview' = {
+resource exceptionsAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   name: '${projectName}-exceptions-alert'
-  location: location
+  location: 'global'
   properties: {
-    displayName: 'VostokLogger — Sustained Exceptions'
     description: 'Fires when more than 10 exceptions occur within a 15-minute window'
     severity: 2
     enabled: true
     evaluationFrequency: 'PT5M'
-    scopes: [
-      logAnalyticsWorkspace.id
-    ]
     windowSize: 'PT15M'
+    scopes: [
+      applicationInsights.id
+    ]
     criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
       allOf: [
         {
-          query: 'AppExceptions | summarize Count=count()'
-          timeAggregation: 'Count'
+          name: 'ExceptionCount'
+          criterionType: 'StaticThresholdCriterion'
+          metricName: 'exceptions/count'
+          metricNamespace: 'microsoft.insights/components'
           operator: 'GreaterThan'
           threshold: 10
-          failingPeriods: {
-            numberOfEvaluationPeriods: 1
-            minFailingPeriodsToAlert: 1
-          }
+          timeAggregation: 'Count'
         }
       ]
     }
-    actions: {
-      actionGroups: [
-        actionGroup.id
-      ]
-    }
+    actions: [
+      { actionGroupId: actionGroup.id }
+    ]
   }
 }
 
