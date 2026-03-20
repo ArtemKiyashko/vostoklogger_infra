@@ -31,6 +31,12 @@ param synapseSqlPassword string = ''
 @description('Comma-separated allowed Meshtastic from IDs (uint)')
 param filterAllowedFromIds string = ''
 
+@description('Resource group containing the shared Action Group')
+param alertActionGroupResourceGroup string = 'rsgwevprivate'
+
+@description('Name of the existing Action Group for alert notifications')
+param alertActionGroupName string = 'Application Insights Smart Detection'
+
 @description('Event Hub Namespace name (must be globally unique)')
 param eventHubNamespaceName string = '${projectName}-eh-${uniqueString(resourceGroup().id)}'
 
@@ -466,6 +472,118 @@ resource synapseFirewallAllowAll 'Microsoft.Synapse/workspaces/firewallRules@202
   properties: {
     startIpAddress: '0.0.0.0'
     endIpAddress: '255.255.255.255'
+  }
+}
+
+// Existing Action Group from shared resource group
+resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' existing = {
+  name: alertActionGroupName
+  scope: resourceGroup(alertActionGroupResourceGroup)
+}
+
+// Alert: Sustained exceptions (>10 in 15 min window, evaluated every 5 min)
+resource exceptionsAlert 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview' = {
+  name: '${projectName}-exceptions-alert'
+  location: location
+  properties: {
+    displayName: 'VostokLogger — Sustained Exceptions'
+    description: 'Fires when more than 10 exceptions occur within a 15-minute window'
+    severity: 2
+    enabled: true
+    evaluationFrequency: 'PT5M'
+    scopes: [
+      applicationInsights.id
+    ]
+    windowSize: 'PT15M'
+    criteria: {
+      allOf: [
+        {
+          query: 'AppExceptions | summarize Count=count()'
+          timeAggregation: 'Count'
+          operator: 'GreaterThan'
+          threshold: 10
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+    actions: {
+      actionGroups: [
+        actionGroup.id
+      ]
+    }
+  }
+}
+
+// Alert: Event Hub consumer lag — no outgoing messages for 15 min (logger_func stopped)
+resource eventHubLagAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: '${projectName}-eventhub-no-consumer'
+  location: 'global'
+  properties: {
+    description: 'No outgoing messages from Event Hub for 15 minutes — logger_func may have stopped consuming'
+    severity: 1
+    enabled: true
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT15M'
+    scopes: [
+      eventHubNamespace.id
+    ]
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          name: 'NoOutgoingMessages'
+          criterionType: 'StaticThresholdCriterion'
+          metricName: 'OutgoingMessages'
+          metricNamespace: 'Microsoft.EventHub/namespaces'
+          operator: 'LessThanOrEqual'
+          threshold: 0
+          timeAggregation: 'Total'
+        }
+      ]
+    }
+    actions: [
+      { actionGroupId: actionGroup.id }
+    ]
+  }
+}
+
+// Alert: Data Lake write anomaly — dynamic threshold detects drops in write volume
+resource dataLakeWriteAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: '${projectName}-datalake-write-anomaly'
+  location: 'global'
+  properties: {
+    description: 'Anomaly in Data Lake write volume detected — Parquet flush may have stopped or degraded'
+    severity: 2
+    enabled: true
+    evaluationFrequency: 'PT15M'
+    windowSize: 'PT1H'
+    scopes: [
+      dataLakeStorage.id
+    ]
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          name: 'WriteVolumeAnomaly'
+          criterionType: 'DynamicThresholdCriterion'
+          metricName: 'Ingress'
+          metricNamespace: 'Microsoft.Storage/storageAccounts'
+          operator: 'LessThan'
+          alertSensitivity: 'Medium'
+          timeAggregation: 'Total'
+          failingPeriods: {
+            numberOfEvaluationPeriods: 4
+            minFailingPeriodsToAlert: 4
+          }
+        }
+      ]
+    }
+    actions: [
+      { actionGroupId: actionGroup.id }
+    ]
   }
 }
 
