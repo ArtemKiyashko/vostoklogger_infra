@@ -584,12 +584,12 @@ resource dataLakeWriteAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   }
 }
 
-// Alert: SignalR errors — server errors indicate hub is unhealthy
+// Alert: SignalR errors — anomaly in server errors indicates hub is unhealthy
 resource signalRErrorsAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   name: '${projectName}-signalr-errors'
   location: 'global'
   properties: {
-    description: 'SignalR server errors detected — hub may be unhealthy'
+    description: 'Anomaly in SignalR server errors detected — hub may be unhealthy'
     severity: 2
     enabled: true
     evaluationFrequency: 'PT5M'
@@ -598,16 +598,20 @@ resource signalRErrorsAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
       signalR.id
     ]
     criteria: {
-      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      'odata.type': 'Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria'
       allOf: [
         {
-          name: 'SystemErrors'
-          criterionType: 'StaticThresholdCriterion'
+          name: 'SystemErrorsAnomaly'
+          criterionType: 'DynamicThresholdCriterion'
           metricName: 'SystemErrors'
           metricNamespace: 'Microsoft.SignalRService/signalR'
           operator: 'GreaterThan'
-          threshold: 10
+          alertSensitivity: 'Medium'
           timeAggregation: 'Count'
+          failingPeriods: {
+            numberOfEvaluationPeriods: 4
+            minFailingPeriodsToAlert: 3
+          }
         }
       ]
     }
