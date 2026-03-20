@@ -584,6 +584,39 @@ resource dataLakeWriteAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   }
 }
 
+// Alert: SignalR errors — server errors indicate hub is unhealthy
+resource signalRErrorsAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: '${projectName}-signalr-errors'
+  location: 'global'
+  properties: {
+    description: 'SignalR server errors detected — hub may be unhealthy'
+    severity: 2
+    enabled: true
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT15M'
+    scopes: [
+      signalR.id
+    ]
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          name: 'SystemErrors'
+          criterionType: 'StaticThresholdCriterion'
+          metricName: 'SystemErrors'
+          metricNamespace: 'Microsoft.SignalRService/signalR'
+          operator: 'GreaterThan'
+          threshold: 10
+          timeAggregation: 'Count'
+        }
+      ]
+    }
+    actions: [
+      { actionGroupId: actionGroup.id }
+    ]
+  }
+}
+
 // Outputs
 output eventHubNamespaceName string = eventHubNamespace.name
 output eventHubName string = eventHub.name
