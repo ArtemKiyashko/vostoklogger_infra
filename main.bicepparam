@@ -8,3 +8,4 @@ param filterAllowedFromIds = '*'
 param eventHubName = 'messages'
 param flushMaxBufferSize = 5000
 param flushIntervalSeconds = 1800
+param filterWebReportIds = '*'

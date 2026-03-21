@@ -49,6 +49,9 @@ param flushMaxBufferSize int = 5000
 @description('Flush interval in seconds')
 param flushIntervalSeconds int = 1800
 
+@description('Comma-separated node IDs for SignalR web report, or * for all')
+param filterWebReportIds string = '*'
+
 // Variables - naming convention
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var dataLakeStorageName = '${projectName}dl${take(uniqueSuffix, 6)}'
@@ -355,6 +358,10 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
           value: applicationInsights.properties.ConnectionString
+        }
+        {
+          name: 'FILTER_WEB_REPORT_IDS'
+          value: filterWebReportIds
         }
         {
           name: 'AzureSignalRConnectionString'
