@@ -31,6 +31,9 @@ param synapseSqlPassword string = ''
 @description('Comma-separated allowed Meshtastic from IDs (uint)')
 param filterAllowedFromIds string = ''
 
+@description('Meshtastic PSK in Base64 (default AQ== = standard default key)')
+param meshtasticPsk string = 'AQ=='
+
 @description('Resource group containing the shared Action Group')
 param alertActionGroupResourceGroup string = 'rsgwevprivate'
 
@@ -247,6 +250,10 @@ resource mqttFilterApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'FILTER_ALLOWED_FROM_IDS'
               value: filterAllowedFromIds
+            }
+            {
+              name: 'MESHTASTIC_PSK'
+              value: meshtasticPsk
             }
             {
               name: 'MQTT_USERNAME'
