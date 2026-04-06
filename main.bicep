@@ -55,6 +55,9 @@ param flushIntervalSeconds int = 1800
 @description('Comma-separated node IDs for SignalR web report, or * for all')
 param filterWebReportIds string = '*'
 
+@description('Map event buffer duration in minutes (default 120 = 2 hours)')
+param mapBufferMinutes int = 120
+
 // Variables - naming convention
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var dataLakeStorageName = '${projectName}dl${take(uniqueSuffix, 6)}'
@@ -369,6 +372,10 @@ resource loggerFuncApp 'Microsoft.Web/sites@2023-01-01' = {
         {
           name: 'FILTER_WEB_REPORT_IDS'
           value: filterWebReportIds
+        }
+        {
+          name: 'MAP_BUFFER_MINUTES'
+          value: string(mapBufferMinutes)
         }
         {
           name: 'AzureSignalRConnectionString'

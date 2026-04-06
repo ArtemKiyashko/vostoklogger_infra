@@ -10,3 +10,4 @@ param eventHubName = 'messages'
 param flushMaxBufferSize = 1
 param flushIntervalSeconds = 10
 param filterWebReportIds = '*'
+param mapBufferMinutes = 120
