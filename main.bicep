@@ -34,11 +34,8 @@ param filterAllowedFromIds string = ''
 @description('Meshtastic PSK in Base64 (default AQ== = standard default key)')
 param meshtasticPsk string = 'AQ=='
 
-@description('Resource group containing the shared Action Group')
-param alertActionGroupResourceGroup string = 'rsgwevprivate'
-
-@description('Name of the existing Action Group for alert notifications')
-param alertActionGroupName string = 'Application Insights Smart Detection'
+@description('Email address for alert notifications')
+param alertEmail string
 
 @description('Event Hub Namespace name (must be globally unique)')
 param eventHubNamespaceName string = '${projectName}-eh-${uniqueString(resourceGroup().id)}'
@@ -496,10 +493,21 @@ resource synapseFirewallAllowAll 'Microsoft.Synapse/workspaces/firewallRules@202
   }
 }
 
-// Existing Action Group from shared resource group
-resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' existing = {
-  name: alertActionGroupName
-  scope: resourceGroup(alertActionGroupResourceGroup)
+// Action Group for alert notifications
+resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' = {
+  name: '${projectName}-alerts-ag'
+  location: 'global'
+  properties: {
+    groupShortName: 'vostokAlert'
+    enabled: true
+    emailReceivers: [
+      {
+        name: 'primary'
+        emailAddress: alertEmail
+        useCommonAlertSchema: true
+      }
+    ]
+  }
 }
 
 // Alert: Sustained exceptions (>10 in 15 min window, evaluated every 5 min)
