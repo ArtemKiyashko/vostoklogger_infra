@@ -35,7 +35,7 @@ param filterAllowedFromIds string = ''
 param meshtasticPsk string = 'AQ=='
 
 @description('Email address for alert notifications')
-param alertEmail string
+param alertEmail string = ''
 
 @description('Event Hub Namespace name (must be globally unique)')
 param eventHubNamespaceName string = '${projectName}-eh-${uniqueString(resourceGroup().id)}'
